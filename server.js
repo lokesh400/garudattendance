@@ -9,6 +9,7 @@ const User = require('./models/User');
 const Employee = require('./models/Employee');
 const Attendance = require('./models/Attendance');
 const { isAuthenticated, isAdmin, isVerifier } = require('./middleware/auth');
+const { generateToken, verifyToken } = require('./middleware/mobileAuth');
 require('dotenv').config();
 
 const app = express();
@@ -275,6 +276,104 @@ app.delete('/api/users/:id', isAuthenticated, isAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete employee' });
+  }
+});
+
+// ============================================
+// MOBILE API ROUTES (JWT-based auth)
+// ============================================
+
+// Mobile login - returns JWT token
+app.post('/api/mobile/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const { user: authenticatedUser, error } = await user.authenticate(password);
+    if (error || !authenticatedUser) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = generateToken(authenticatedUser);
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: authenticatedUser._id,
+        username: authenticatedUser.username,
+        role: authenticatedUser.role
+      }
+    });
+  } catch (err) {
+    console.error('Mobile login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Mobile - Get all employees with face descriptors
+app.get('/api/mobile/employees', verifyToken, async (req, res) => {
+  try {
+    const employees = await Employee.find().select('_id name employee_id face_descriptor');
+    res.json({
+      success: true,
+      employees: employees.map(emp => ({
+        id: emp._id.toString(),
+        name: emp.name,
+        employeeId: emp.employee_id,
+        descriptors: emp.face_descriptor
+      }))
+    });
+  } catch (err) {
+    console.error('Mobile employees error:', err);
+    res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+});
+
+// Mobile - Confirm attendance
+app.post('/api/mobile/confirm-attendance', verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const existing = await Attendance.findOne({ user_id: userId, date: today });
+    if (existing) {
+      return res.status(400).json({ error: 'Attendance already marked today' });
+    }
+
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { hour12: false });
+
+    const attendance = new Attendance({
+      user_id: userId,
+      date: today,
+      check_in_time: time,
+      marked_by: req.mobileUser._id
+    });
+
+    await attendance.save();
+
+    const employee = await Employee.findById(userId);
+    res.json({
+      success: true,
+      message: 'Attendance marked successfully',
+      user: { name: employee.name, employeeId: employee.employee_id },
+      time,
+      date: today
+    });
+  } catch (err) {
+    console.error('Mobile confirm attendance error:', err);
+    res.status(500).json({ error: 'Failed to mark attendance' });
   }
 });
 

@@ -207,8 +207,8 @@
                         <% attendance.forEach((record, index) => { %>
                             <tr>
                                 <td><%= index + 1 %></td>
-                                <td><%= record.user_id.name %></td>
-                                <td><%= record.user_id.employee_id %></td>
+                                <td><%= record.user_id ? record.user_id.name : 'Deleted Employee' %></td>
+                                <td><%= record.user_id ? record.user_id.employee_id : 'N/A' %></td>
                                 <td><%= new Date(record.date).toLocaleDateString() %></td>
                                 <td><%= record.check_in_time %></td>
                                 <td><%= record.marked_by ? record.marked_by.username : 'N/A' %></td>
