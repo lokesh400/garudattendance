@@ -88,17 +88,28 @@
             background: #dc2626;
         }
 
-        .camera-container {
-            position: relative;
-            margin: 20px 0;
+        .split-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 70vh;
+        }
+
+        .camera-section {
+            flex: 1;
+            background: #000;
             border-radius: 15px;
             overflow: hidden;
-            background: #000;
+            position: relative;
+            min-height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #video {
             width: 100%;
-            height: auto;
+            height: 100%;
+            object-fit: cover;
             display: block;
         }
 
@@ -106,23 +117,53 @@
             display: none;
         }
 
+        #capturedImage {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .camera-placeholder {
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .camera-placeholder i {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .controls-section {
+            padding: 20px 0;
+        }
+
         .controls {
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            gap: 15px;
             margin: 20px 0;
-            flex-wrap: wrap;
         }
 
         button {
-            flex: 1;
-            padding: 15px;
-            font-size: 1em;
+            width: 100%;
+            padding: 18px;
+            font-size: 1.1em;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s;
-            min-width: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button i {
+            font-size: 1.2em;
         }
 
         .btn-primary {
@@ -136,12 +177,26 @@
         }
 
         .btn-success {
-            background: #28a745;
+            background: #10b981;
             color: white;
         }
 
         .btn-success:hover:not(:disabled) {
-            background: #218838;
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-capture {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 1.2em;
+            padding: 20px;
+        }
+
+        .btn-capture:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
         button:disabled {
@@ -227,26 +282,43 @@
             font-style: italic;
         }
 
-        .user-info {
-            background: #f8f9fa;
+        .result-info {
+            background: #f0fdf4;
+            border: 2px solid #86efac;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin: 20px 0;
             display: none;
         }
 
-        .user-info.show {
+        .result-info.show {
             display: block;
         }
 
-        .user-info h3 {
-            color: #667eea;
-            margin-bottom: 10px;
+        .result-info.error {
+            background: #fef2f2;
+            border-color: #fca5a5;
         }
 
-        .user-info p {
-            margin: 5px 0;
-            font-size: 1.1em;
+        .result-info h3 {
+            color: #059669;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-info.error h3 {
+            color: #dc2626;
+        }
+
+        .result-info p {
+            margin: 8px 0;
+            font-size: 1.05em;
+        }
+
+        .result-info strong {
+            color: #1f2937;
         }
 
         .user-info strong {
@@ -274,12 +346,35 @@
         }
 
         @media (max-width: 600px) {
-            .controls {
+            .container {
+                padding: 15px;
+            }
+
+            .header-bar {
                 flex-direction: column;
+                gap: 10px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .split-container {
+                min-height: 60vh;
+            }
+
+            .camera-section {
+                min-height: 40vh;
             }
 
             button {
-                width: 100%;
+                font-size: 1em;
+                padding: 15px;
+            }
+
+            .btn-capture {
+                font-size: 1.1em;
+                padding: 18px;
             }
         }
     </style>
@@ -298,9 +393,16 @@
         
         <h1>Mark Attendance</h1>
 
-        <div class="camera-container" id="cameraContainer" style="display: none;">
-            <video id="video" autoplay playsinline></video>
-            <canvas id="canvas"></canvas>
+        <div class="split-container">
+            <div class="camera-section" id="cameraSection">
+                <div class="camera-placeholder" id="cameraPlaceholder">
+                    <i class="fas fa-camera"></i>
+                    <p>Click "Allow Camera Access" to begin</p>
+                </div>
+                <video id="video" autoplay playsinline style="display: none;"></video>
+                <canvas id="canvas"></canvas>
+                <img id="capturedImage" alt="Captured face">
+            </div>
         </div>
 
         <div id="permissionRequest" class="message info" style="display: block;">
@@ -358,36 +460,49 @@
 
         <div id="status" class="status">Click "Allow Camera Access" to begin</div>
 
-        <div class="controls">
-            <button id="scanBtn" class="btn-primary" disabled>Scan Face</button>
-            <button id="confirmBtn" class="btn-success" style="display: none;">Confirm Attendance</button>
-        </div>
-
-        <div id="userInfo" class="user-info">
-            <h3>User Identified:</h3>
+        <div id="resultInfo" class="result-info">
+            <h3><i class="fas fa-check-circle"></i> <span id="resultTitle">Face Recognized!</span></h3>
             <p><strong>Name:</strong> <span id="userName"></span></p>
             <p><strong>Employee ID:</strong> <span id="userEmployeeId"></span></p>
             <p><strong>Confidence:</strong> <span id="confidence"></span></p>
         </div>
 
+        <div class="controls" id="controls" style="display: none;">
+            <button id="captureBtn" class="btn-capture">
+                <i class="fas fa-camera"></i> Capture Face
+            </button>
+            <button id="confirmBtn" class="btn-success" style="display: none;">
+                <i class="fas fa-check"></i> Confirm & Mark Attendance
+            </button>
+            <button id="retakeBtn" class="btn-primary" style="display: none;">
+                <i class="fas fa-redo"></i> Retake Photo
+            </button>
+        </div>
+
         <div id="message"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const scanBtn = document.getElementById('scanBtn');
+        const ctx = canvas.getContext('2d');
+        const capturedImage = document.getElementById('capturedImage');
+        const cameraSection = document.getElementById('cameraSection');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const captureBtn = document.getElementById('captureBtn');
         const confirmBtn = document.getElementById('confirmBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
         const status = document.getElementById('status');
         const message = document.getElementById('message');
-        const userInfo = document.getElementById('userInfo');
+        const resultInfo = document.getElementById('resultInfo');
+        const resultTitle = document.getElementById('resultTitle');
         const userName = document.getElementById('userName');
         const userEmployeeId = document.getElementById('userEmployeeId');
         const confidenceEl = document.getElementById('confidence');
         const requestCameraBtn = document.getElementById('requestCameraBtn');
         const permissionRequest = document.getElementById('permissionRequest');
-        const cameraContainer = document.getElementById('cameraContainer');
+        const controls = document.getElementById('controls');
         const showTroubleshootingBtn = document.getElementById('showTroubleshootingBtn');
         const troubleshooting = document.getElementById('troubleshooting');
         const retryAfterTroubleshooting = document.getElementById('retryAfterTroubleshooting');
@@ -413,6 +528,7 @@
                 ]);
                 
                 modelsLoaded = true;
+                console.log('All models loaded successfully');
                 status.textContent = 'Models loaded! Loading registered users...';
                 await loadRegisteredUsers();
             } catch (error) {
@@ -433,18 +549,17 @@
                     
                     // Create labeled face descriptors
                     labeledDescriptors = data.users.map(user => {
-                        // Support multiple descriptors per user
                         const descriptors = user.descriptor.map(desc => new Float32Array(desc));
                         return new faceapi.LabeledFaceDescriptors(user.id.toString(), descriptors);
                     });
                     
-                    // Create face matcher with lower threshold for better matching
-                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
+                    // Create face matcher with more lenient threshold (0.6 = 60% similarity required)
+                    // Higher value = more lenient matching
+                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
                     
                     if (cameraReady) {
-                        status.textContent = `Ready! ${data.users.length} user(s) registered.`;
-                        scanBtn.disabled = false;
-                        showMessage('✓ System ready! You can now scan faces for attendance.', 'success');
+                        status.textContent = `✓ Ready! ${data.users.length} user(s) registered. Click "Capture Face" to begin.`;
+                        captureBtn.disabled = false;
                     }
                 } else {
                     status.textContent = 'No registered users found.';
@@ -457,16 +572,6 @@
             }
         }
 
-        // Check camera permissions
-        async function checkCameraPermission() {
-            try {
-                const result = await navigator.permissions.query({ name: 'camera' });
-                return result.state;
-            } catch (error) {
-                return 'prompt';
-            }
-        }
-
         // Request and start camera
         async function startCamera() {
             try {
@@ -474,8 +579,8 @@
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { 
                         facingMode: 'user',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }
                 });
                 video.srcObject = stream;
@@ -483,7 +588,9 @@
                 
                 // Hide permission request, show camera
                 permissionRequest.style.display = 'none';
-                cameraContainer.style.display = 'block';
+                cameraPlaceholder.style.display = 'none';
+                video.style.display = 'block';
+                controls.style.display = 'flex';
                 
                 status.textContent = 'Camera ready! Loading face detection models...';
                 showMessage('✓ Camera access granted! Loading AI models...', 'success');
@@ -495,40 +602,28 @@
                 cameraReady = false;
                 
                 let errorMsg = '❌ Camera Access Failed. ';
-                let suggestions = '<br><br><strong>Possible solutions:</strong><ul style="margin-left: 20px; text-align: left;">';
+                let suggestions = '<br><br><strong>Possible solutions:</strong><ul style=\"margin-left: 20px; text-align: left;\">';
                 
                 if (error.name === 'NotAllowedError') {
                     errorMsg += 'Camera permission was denied.';
                     suggestions += '<li>Click the 🔒 or 🎥 icon in the address bar and allow camera</li>';
-                    suggestions += '<li>Or click "Having Issues?" button below for detailed instructions</li>';
+                    suggestions += '<li>Or click \"Having Issues?\" button below for detailed instructions</li>';
                 } else if (error.name === 'NotFoundError') {
                     errorMsg += 'No camera found on this device.';
                     suggestions += '<li>Make sure your device has a camera</li>';
-                    suggestions += '<li>Check if camera is properly connected</li>';
                 } else if (error.name === 'NotReadableError') {
                     errorMsg += 'Camera is already in use by another application.';
                     suggestions += '<li>Close Zoom, Teams, Skype, or other video apps</li>';
-                    suggestions += '<li>Restart your browser</li>';
-                } else if (error.name === 'OverconstrainedError') {
-                    errorMsg += 'Camera settings not supported.';
-                    suggestions += '<li>Try a different browser</li>';
                 } else if (error.name === 'TypeError') {
                     errorMsg += 'Secure connection required.';
-                    suggestions += '<li>Use <code>http://localhost:3000</code> (not 127.0.0.1 or IP)</li>';
-                    suggestions += '<li>Or use HTTPS for non-localhost access</li>';
-                } else {
-                    errorMsg += 'An unexpected error occurred.';
-                    suggestions += '<li>Try using <code>http://localhost:3000</code></li>';
-                    suggestions += '<li>Check browser permissions</li>';
-                    suggestions += '<li>Try a different browser</li>';
+                    suggestions += '<li>Use <code>http://localhost:3000</code></li>';
                 }
                 
-                suggestions += '</ul><br><button onclick="document.getElementById(\'showTroubleshootingBtn\').click()" class="btn-secondary" style="padding: 10px 20px;">View Full Troubleshooting Guide</button>';
+                suggestions += '</ul>';
                 
-                status.textContent = 'Camera access failed - See instructions below';
+                status.textContent = 'Camera access failed';
                 showMessage(errorMsg + suggestions, 'error');
                 
-                // Show troubleshooting automatically for common issues
                 if (error.name === 'NotAllowedError' || error.name === 'TypeError') {
                     setTimeout(() => {
                         troubleshooting.classList.add('show');
@@ -537,83 +632,125 @@
             }
         }
 
-        // Request camera button
-        requestCameraBtn.addEventListener('click', async () => {
-            requestCameraBtn.disabled = true;
-            requestCameraBtn.textContent = 'Requesting...';
-            troubleshooting.classList.remove('show');
-            await startCamera();
-            if (!cameraReady) {
-                requestCameraBtn.disabled = false;
-                requestCameraBtn.textContent = 'Retry Camera Access';
+        // Capture image from video
+        captureBtn.addEventListener('click', async () => {
+            // Validate prerequisites
+            if (!modelsLoaded) {
+                showMessage('Models are still loading. Please wait...', 'warning');
+                return;
             }
-        });
+            if (!faceMatcher) {
+                showMessage('Face matcher not initialized. Please refresh the page.', 'error');
+                return;
+            }
+            if (!cameraReady) {
+                showMessage('Camera not ready. Please allow camera access.', 'error');
+                return;
+            }
+            if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+                showMessage('Video not ready. Please wait a moment and try again.', 'warning');
+                return;
+            }
 
-        // Show troubleshooting
-        showTroubleshootingBtn.addEventListener('click', () => {
-            troubleshooting.classList.toggle('show');
-            showTroubleshootingBtn.textContent = troubleshooting.classList.contains('show') 
-                ? 'Hide Instructions' 
-                : 'Having Issues?';
-        });
-
-        // Retry after troubleshooting
-        retryAfterTroubleshooting.addEventListener('click', () => {
-            requestCameraBtn.click();
-        });
-
-        // Scan face and match with registered users
-        scanBtn.addEventListener('click', async () => {
-            if (!modelsLoaded || !faceMatcher) return;
-
-            scanBtn.disabled = true;
-            status.textContent = 'Scanning face...';
-            userInfo.classList.remove('show');
-            confirmBtn.style.display = 'none';
+            captureBtn.disabled = true;
+            status.textContent = 'Capturing and analyzing face...';
+            resultInfo.classList.remove('show');
 
             try {
+                // Set canvas size and capture frame
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                if (canvas.width === 0 || canvas.height === 0) {
+                    throw new Error('Invalid canvas dimensions');
+                }
+                
+                ctx.drawImage(video, 0, 0);
+                
+                // Show captured image with high quality
+                const imageData = canvas.toDataURL('image/jpeg', 0.95);
+                capturedImage.src = imageData;
+                capturedImage.style.display = 'block';
+                video.style.display = 'none';
+                
+                status.textContent = 'Analyzing face...';
+                
+                // Detect face with landmarks and descriptor
                 const detection = await faceapi
-                    .detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+                    .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ 
+                        minConfidence: 0.3,
+                        maxResults: 1
+                    }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
                 if (detection) {
                     const result = faceMatcher.findBestMatch(detection.descriptor);
                     
-                    if (result.label !== 'unknown') {
-                        const userId = parseInt(result.label);
+                    console.log('Match result:', result.label, 'Distance:', result.distance);
+                    
+                    // Check if match is found and within acceptable range
+                    if (result.label !== 'unknown' && result.distance < 0.6) {
+                        const userId = result.label;
                         matchedUser = registeredUsers.find(u => u.id === userId);
                         
                         if (matchedUser) {
-                            // Calculate confidence percentage
                             const confidence = ((1 - result.distance) * 100).toFixed(1);
                             
                             userName.textContent = matchedUser.name;
                             userEmployeeId.textContent = matchedUser.employeeId;
                             confidenceEl.textContent = `${confidence}%`;
                             
-                            userInfo.classList.add('show');
-                            confirmBtn.style.display = 'block';
+                            resultInfo.classList.add('show');
+                            resultInfo.classList.remove('error');
+                            resultTitle.textContent = 'Face Recognized!';
                             
-                            status.textContent = 'Face matched! Click Confirm to mark attendance.';
-                            showMessage('Face recognized successfully!', 'success');
+                            confirmBtn.style.display = 'block';
+                            retakeBtn.style.display = 'block';
+                            captureBtn.style.display = 'none';
+                            
+                            status.textContent = `✓ Face matched: ${matchedUser.name} (${confidence}% confidence)`;
+                            showMessage(`✓ Face recognized: ${matchedUser.name}`, 'success');
                         }
                     } else {
-                        status.textContent = 'Face not recognized. Please try again or register.';
-                        showMessage('Face not recognized. Please ensure you are registered or try again.', 'error');
-                        scanBtn.disabled = false;
+                        console.log('No match found. Best distance:', result.distance);
+                        const matchScore = ((1 - result.distance) * 100).toFixed(0);
+                        showError(`Face not recognized. Please ensure you are registered. (Match score: ${matchScore}%)`);
+                        retakeBtn.style.display = 'block';
+                        captureBtn.style.display = 'none';
                     }
                 } else {
-                    status.textContent = 'No face detected. Please try again.';
-                    showMessage('No face detected. Please ensure your face is clearly visible.', 'error');
-                    scanBtn.disabled = false;
+                    console.log('No face detected in image');
+                    showError('No face detected. Please ensure your face is clearly visible and well-lit.');
+                    retakeBtn.style.display = 'block';
+                    captureBtn.style.display = 'none';
                 }
             } catch (error) {
-                console.error('Error scanning face:', error);
-                status.textContent = 'Error scanning face. Please try again.';
-                showMessage('Error scanning face. Please try again.', 'error');
-                scanBtn.disabled = false;
+                console.error('Error detecting face:', error);
+                console.error('Error details:', error.message, error.stack);
+                
+                // Reset to video view on error
+                capturedImage.style.display = 'none';
+                video.style.display = 'block';
+                captureBtn.style.display = 'block';
+                captureBtn.disabled = false;
+                
+                showError(`Error analyzing face: ${error.message}. Please try again.`);
+                showMessage('Error analyzing face. Please ensure good lighting and try again.', 'error');
             }
+        });
+
+        // Retake photo
+        retakeBtn.addEventListener('click', () => {
+            capturedImage.style.display = 'none';
+            video.style.display = 'block';
+            captureBtn.style.display = 'block';
+            captureBtn.disabled = false;
+            confirmBtn.style.display = 'none';
+            retakeBtn.style.display = 'none';
+            resultInfo.classList.remove('show');
+            matchedUser = null;
+            status.textContent = 'Ready to capture. Position your face in camera.';
         });
 
         // Confirm attendance
@@ -641,16 +778,21 @@
                     status.textContent = 'Attendance marked successfully!';
                     
                     setTimeout(() => {
-                        userInfo.classList.remove('show');
+                        resultInfo.classList.remove('show');
+                        capturedImage.style.display = 'none';
+                        video.style.display = 'block';
+                        captureBtn.style.display = 'block';
+                        captureBtn.disabled = false;
                         confirmBtn.style.display = 'none';
-                        scanBtn.disabled = false;
+                        confirmBtn.disabled = false;
+                        retakeBtn.style.display = 'none';
                         matchedUser = null;
-                        status.textContent = 'Ready to scan next person.';
+                        status.textContent = 'Ready for next person.';
                     }, 3000);
                 } else {
                     showMessage(data.error || 'Failed to mark attendance', 'error');
                     confirmBtn.disabled = false;
-                    status.textContent = 'Failed to mark attendance.';
+                    status.textContent = 'Failed to mark attendance. Try again.';
                 }
             } catch (error) {
                 console.error('Error marking attendance:', error);
@@ -660,43 +802,61 @@
             }
         });
 
+        function showError(message) {
+            resultInfo.classList.add('show', 'error');
+            resultTitle.textContent = 'Detection Failed';
+            userName.textContent = message;
+            userEmployeeId.textContent = '';
+            confidenceEl.textContent = '';
+            status.textContent = message;
+            showMessage(message, 'error');
+        }
+
         function showMessage(text, type) {
-            message.innerHTML = `<div class="message ${type}">${text}</div>`;
+            message.innerHTML = `<div class=\"message ${type}\">${text}</div>`;
             setTimeout(() => {
                 message.innerHTML = '';
             }, 5000);
         }
 
-        // Check if camera permission is already granted
+        // Request camera button
+        requestCameraBtn.addEventListener('click', async () => {
+            requestCameraBtn.disabled = true;
+            requestCameraBtn.textContent = 'Requesting...';
+            troubleshooting.classList.remove('show');
+            await startCamera();
+            if (!cameraReady) {
+                requestCameraBtn.disabled = false;
+                requestCameraBtn.textContent = 'Retry Camera Access';
+            }
+        });
+
+        // Show troubleshooting
+        showTroubleshootingBtn.addEventListener('click', () => {
+            troubleshooting.classList.toggle('show');
+            showTroubleshootingBtn.textContent = troubleshooting.classList.contains('show') 
+                ? 'Hide Instructions' 
+                : 'Having Issues?';
+        });
+
+        // Retry after troubleshooting
+        retryAfterTroubleshooting.addEventListener('click', () => {
+            requestCameraBtn.click();
+        });
+
+        // Initialize
         async function initializeApp() {
-            // Display current URL
             currentUrl.textContent = window.location.href;
             
-            // Check if using localhost
             const isLocalhost = window.location.hostname === 'localhost' || 
                                window.location.hostname === '127.0.0.1';
             const isHttps = window.location.protocol === 'https:';
             
             if (!isLocalhost && !isHttps) {
-                showMessage('⚠️ Warning: Camera may not work without HTTPS. Use http://localhost:3000 instead of IP address.', 'warning');
-            }
-            
-            try {
-                const permissionState = await checkCameraPermission();
-                if (permissionState === 'granted') {
-                    // Auto-start if permission already granted
-                    requestCameraBtn.textContent = 'Starting Camera...';
-                    requestCameraBtn.disabled = true;
-                    await startCamera();
-                } else if (permissionState === 'denied') {
-                    showMessage('⚠️ Camera permission is blocked. Click "Having Issues?" for instructions to enable it.', 'warning');
-                }
-            } catch (error) {
-                console.log('Manual camera permission required');
+                showMessage('⚠️ Warning: Camera may not work without HTTPS. Use http://localhost:3000', 'warning');
             }
         }
 
-        // Initialize
         initializeApp();
     </script>
 </body>
