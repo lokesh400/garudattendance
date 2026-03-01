@@ -440,7 +440,6 @@ app.get('/all/students', async (req, res) => {
 app.post('/student/register', async (req, res) => {
   try {
     const { studentId, name, rollNumber } = req.body;
-    console.log('Registering student:', { studentId, name, rollNumber });
     const exists = await Employee.findOne({ employee_id: studentId });
     if (exists) {
       return res.status(400).json({ error: 'Student Already Registered' });
@@ -496,9 +495,6 @@ async function startServer() {
       console.log(`\n🚀 Server is running on http://localhost:${PORT}`);
       console.log('✓ Face Attendance System is ready!');
       console.log('✓ Authentication enabled');
-      console.log('\n📝 Default Login Credentials:');
-      console.log('   Admin    - username: admin, password: admin123');
-      console.log('   Verifier - username: verifier, password: verifier123\n');
     });
   } catch (error) {
     console.error('Failed to start server:', error);
