@@ -11,6 +11,7 @@ const Attendance = require('./models/Attendance');
 const { isAuthenticated, isAdmin, isVerifier } = require('./middleware/auth');
 const { generateToken, verifyToken } = require('./middleware/mobileAuth');
 const axios = require('axios');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
@@ -46,6 +47,17 @@ app.use((req, res, next) => {
   res.locals.currentUser = req.user;
   next();
 });
+
+app.use(
+  cors({
+    origin: 8081,
+    credentials: true,
+    "https://garudattendance.onrender.com": true,
+    "http://localhost:3000": true,
+    "http://localhost:8081": true,
+    "http://localhost:5000": true,
+  })
+);
 
 // Create necessary directories
 const fs = require('fs');
@@ -437,6 +449,38 @@ app.post('/student/register', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
+  }
+});
+
+
+app.get('/attendance/student/:userid/:month/:year', async (req, res) => {
+  console.log('Fetching attendance for student:', req.params);
+  try {
+    const Employee = require('./models/Employee');
+    const { userid, month, year } = req.params;
+    const paddedMonth = month.toString().padStart(2, '0');
+
+    const employe = await Employee.findOne({ employee_id: userid });
+    if (!employe) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    const employee = await Employee.findOne({ employee_id: userid });
+    const id = employee._id;
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    const attendance = await Attendance.find({
+      user_id: id,
+      date: { $regex: `^${year}-${paddedMonth}-` }
+    }).sort({ date: 1 });
+    console.log(`Found ${attendance.length} records for employee ${employee.name}`);
+    res.json(attendance);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch attendance data' });
   }
 });
 
