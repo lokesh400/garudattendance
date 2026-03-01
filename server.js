@@ -10,6 +10,7 @@ const Employee = require('./models/Employee');
 const Attendance = require('./models/Attendance');
 const { isAuthenticated, isAdmin, isVerifier } = require('./middleware/auth');
 const { generateToken, verifyToken } = require('./middleware/mobileAuth');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -154,8 +155,11 @@ app.post('/api/register', isAuthenticated, isAdmin, async (req, res) => {
     const employee = new Employee({
       name: name,
       employee_id: employeeId,
+      rollNumber: req.body.rollNumber || '',
       face_descriptor: faceDescriptors
     });
+
+    console.log('Registering employee:', employee);
     
     await employee.save();
     
@@ -407,6 +411,34 @@ async function initializeDefaultUsers() {
     console.error('Error creating default users:', err);
   }
 }
+
+app.get('/all/students', async (req, res) => {
+  try {
+    const response = await axios.get('https://garudclasseserp.onrender.com/attendance/get/students/all');
+    const students = response.data;
+    console.log('Fetched students:', students);
+    res.render('students', { students });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }}
+);
+
+app.post('/student/register', async (req, res) => {
+  try {
+    const { studentId, name, rollNumber } = req.body;
+    console.log('Registering student:', { studentId, name, rollNumber });
+    const exists = await Employee.findOne({ employee_id: studentId });
+    if (exists) {
+      return res.status(400).json({ error: 'Student Already Registered' });
+    }
+    res.render('register', { studentId, name, rollNumber, user: req.user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 // ============================================
 // START SERVER

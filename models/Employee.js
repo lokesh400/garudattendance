@@ -16,6 +16,10 @@ const EmployeeSchema = new Schema({
     type: Array,
     required: true
   },
+  rollNumber: {
+    type: String,
+    default: ''
+  },
   created_at: {
     type: Date,
     default: Date.now
